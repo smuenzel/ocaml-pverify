@@ -1,10 +1,10 @@
 
 (define-sort ocaml-int () (_ BitVec 5))
 
-(define-fun ocaml-shl ((x ocaml-int) (y ocaml-int)) ocaml-int
+(define-fun ocaml-lsl ((x ocaml-int) (y ocaml-int)) ocaml-int
   (bvshl x y))
 
-(define-fun ocaml-shr ((x ocaml-int) (y ocaml-int)) ocaml-int
+(define-fun ocaml-lsr ((x ocaml-int) (y ocaml-int)) ocaml-int
   (bvlshr x y))
 
 (define-fun ocaml-or ((x ocaml-int) (y ocaml-int)) ocaml-int
@@ -22,14 +22,17 @@
 (define-fun ocaml-asr-1 ((x ocaml-int)) ocaml-int
   (concat
     ((_ extract 4 4) x)
-    ((_ extract 3 0) (ocaml-shr x #b00001))
+    ((_ extract 3 0) (ocaml-lsr x #b00001))
     ))
+
+(define-fun ocaml-lsr-1 ((x ocaml-int)) ocaml-int
+  (ocaml-lsr x #b00001))
 
 (define-fun ocaml-addi ((x ocaml-int) (y ocaml-int)) ocaml-int
   (bvadd x y))
 
 (define-fun ocaml-tagi ((x ocaml-int)) ocaml-int
-  (bvadd (ocaml-shl x #b00001) #b00001))
+  (bvadd (ocaml-lsl x #b00001) #b00001))
 
 (define-fun ocaml-untagi ((x ocaml-int)) ocaml-int
   (ocaml-asr-1 x))

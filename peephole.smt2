@@ -1,7 +1,15 @@
 
 (define-sort ocaml-int () (_ BitVec 5))
 
+(define-const ocaml-true ocaml-int  #b00001)
+(define-const ocaml-false ocaml-int #b00000)
+
+;(define-fun ocaml-if ((cond ocaml-int) (ifso ocaml-int) (ifnot ocaml-int))
+;  (
+
 (declare-datatypes () ((CMP EQ NE LT GT LE GE)))
+
+(declare-datatypes () ((LOGI AND OR XOR)))
 
 (define-fun ocaml-lsl ((x ocaml-int) (y ocaml-int)) ocaml-int
   (bvshl x y))
@@ -14,6 +22,9 @@
 
 (define-fun ocaml-and ((x ocaml-int) (y ocaml-int)) ocaml-int
   (bvand x y))
+
+(define-fun ocaml-xor ((x ocaml-int) (y ocaml-int)) ocaml-int
+  (bvxor x y))
 
 (define-fun ocaml-has-tag ((x ocaml-int)) bool
   (= (ocaml-and x #b00001) #b00001))
@@ -77,6 +88,13 @@
     (case LE (ocaml-cmp-le x y))
     (case GE (ocaml-cmp-ge x y))
     ))
+
+(define-fun ocaml-logi ((logi LOGI) (x ocaml-int) (y ocaml-int)) ocaml-int
+  (match logi
+    (case AND (ocaml-and x y))
+    (case OR  (ocaml-or x y))
+    (case XOR (ocaml-xor x y))
+    ))
   
 
 ;| Cop(Ccmpi cmpop
@@ -105,6 +123,8 @@
 
 (pop 1)
 
+;-----------------------------------------
+
 (push 1)
 
 (assert (not (=
@@ -116,5 +136,54 @@
 
 (check-sat)
 (get-model)
-
 (pop 1)
+;-----------------------------------------
+(push 1)
+
+(declare-const logi-op LOGI)
+
+(assert-not (= logi-op XOR))
+
+(assert-not (=
+  (ocaml-logi logi-op (ocaml-tagi left) (ocaml-tagi right))
+  (ocaml-tagi (ocaml-logi logi-op left right))
+  ))
+
+(check-sat)
+(get-model)
+(pop 1)
+;-----------------------------------------
+(push 1)
+
+(assert-not (=
+  (ocaml-or (ocaml-xor (ocaml-tagi left) #b11111) #b00001)
+  ;(ocaml-xor (ocaml-tagi x) #b11110)
+  (ocaml-tagi (ocaml-xor left #b11111))
+))
+
+(check-sat)
+(get-model)
+(pop 1)
+;-----------------------------------------
+(push 1)
+
+(assert-not (=
+  (ocaml-or (ocaml-xor (ocaml-tagi left) right) #b00001)
+  (ocaml-tagi (ocaml-xor left (ocaml-asr-1 right)))
+))
+
+(check-sat)
+(get-model)
+(pop 1)
+;-----------------------------------------
+(push 1)
+
+(assert-not (=
+  (ocaml-or (ocaml-xor (ocaml-tagi left) (ocaml-tagi right)) #b00001)
+  (ocaml-tagi (ocaml-xor left right))
+))
+
+(check-sat)
+(get-model)
+(pop 1)
+;-----------------------------------------

@@ -1,0 +1,5 @@
+(executable
+  (name gen_vopt)
+  (libraries cmm_vopt)
+  (preprocess (pps ppx_jane))
+)

@@ -1,0 +1,5 @@
+(library
+  (name cmm_vopt)
+  (libraries core)
+  (preprocess (pps ppx_jane))
+)

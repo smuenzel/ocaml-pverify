@@ -30,3 +30,36 @@ let example =
   ; constraints = []
   }
   
+let op2 op arg1 arg2 : Expr.t =
+  Op
+    { op
+    ; args = [ arg1; arg2 ]
+    }
+
+let op1 op arg1 : Expr.t =
+  Op
+    { op
+    ; args = [ arg1 ]
+    }
+
+let one : Expr.t = Const One
+  
+
+let example2 =
+  let left = Var.create "left" in
+  let right = Var.create "right" in
+  let (input : Expr.t) =
+    op2 (LI Or)
+      (op2 (LI Xor)
+         (op1 Tagi (Var left))
+         (op1 Tagi (Var right))
+      )
+      one
+  in
+  let (output : Expr.t) =
+    op1 Tagi (op2 (LI Xor) (Var left) (Var right))
+  in
+  { input
+  ; output
+  ; constraints = []
+  }

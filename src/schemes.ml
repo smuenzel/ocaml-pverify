@@ -6,13 +6,13 @@ let example =
   let right = Var.create "right" in
   let (input : Expr.t) =
     Op
-      { op = LI Or
+      { op = `LI Or
       ; args =
           [ Op
-              { op = LI Xor
+              { op = `LI Xor
               ; args =
-                  [ Op { op = Tagi; args = [ Var left ] }
-                  ; Op { op = Tagi; args = [ Var right ] }
+                  [ Op { op = `Tagi; args = [ Var left ] }
+                  ; Op { op = `Tagi; args = [ Var right ] }
                   ]
               }
           ; Const One
@@ -20,9 +20,9 @@ let example =
       }
   in
   let (output : Expr.t) =
-    Op { op = Tagi
+    Op { op = `Tagi
        ; args =
-           [ Op { op = LI Xor; args = [ Var left; Var right ] } ]
+           [ Op { op = `LI Xor; args = [ Var left; Var right ] } ]
        }
   in
   { input
@@ -49,15 +49,15 @@ let example2 =
   let left = Var.create "left" in
   let right = Var.create "right" in
   let (input : Expr.t) =
-    op2 (LI Or)
-      (op2 (LI Xor)
-         (op1 Tagi (Var left))
-         (op1 Tagi (Var right))
+    op2 (`LI Or)
+      (op2 (`LI Xor)
+         (op1 `Tagi (Var left))
+         (op1 `Tagi (Var right))
       )
       one
   in
   let (output : Expr.t) =
-    op1 Tagi (op2 (LI Xor) (Var left) (Var right))
+    op1 `Tagi (op2 (`LI Xor) (Var left) (Var right))
   in
   { input
   ; output

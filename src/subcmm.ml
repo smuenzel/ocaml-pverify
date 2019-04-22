@@ -18,11 +18,11 @@ module Const = struct
 end
 
 module Op = struct
-  type t =
-    | I of int_op
-    | LI of int_log_op
-    | CI of int_cmp_op
-    | Tagi
+  type binary_int_ops =
+    [ `I of int_op
+    | `LI of int_log_op
+    | `CI of int_cmp_op
+    ]
   and int_op =
     | Lsl
     | Lsr
@@ -38,6 +38,11 @@ module Op = struct
     | GT
     | LE
     | GE
+       
+  type t =
+    [ binary_int_ops
+    | `Tagi
+    ]
 
   let smt_of_int_op = function
     | Lsl -> Sexp.Atom "ocaml-lsl"
@@ -75,11 +80,16 @@ module Op = struct
     | LE -> "Ccmpi Cle"
     | GE -> "Ccmpi Cge"
 
+  let cmm_of_binary_int_op = function
+    | `I io -> cmm_of_int_op io
+    | `LI li -> cmm_of_int_log_op li
+    | `CI ci -> cmm_of_int_cmp_op ci
+
   let smt_of_t = function
-    | Tagi -> [ Sexp.Atom "ocaml-tagi" ]
-    | I io  -> [ smt_of_int_op io ]
-    | LI li -> [ Sexp.Atom "ocaml-logi"; smt_of_int_log_op li ]
-    | CI ci -> [ Sexp.Atom "ocaml-cmp"; smt_of_int_cmp_op ci ]
+    | `Tagi -> [ Sexp.Atom "ocaml-tagi" ]
+    | `I io  -> [ smt_of_int_op io ]
+    | `LI li -> [ Sexp.Atom "ocaml-logi"; smt_of_int_log_op li ]
+    | `CI ci -> [ Sexp.Atom "ocaml-cmp"; smt_of_int_cmp_op ci ]
 end
 
 module Var = struct
@@ -142,15 +152,28 @@ module Expr = struct
         |> String.concat ~sep:"; "
       in
       match op with
-      | Tagi ->
+      | `Tagi ->
         sprintf "(Cop(Caddi,[Cop(Clsl, [%s; Cconst_int(1,_)],_); Cconst_int(1,_)],_))"
           args
-      | I intop ->
-        sprintf "(Cop(%s,[%s],_))" (Op.cmm_of_int_op intop) args
-      | LI logop ->
-        sprintf "(Cop(%s,[%s],_))" (Op.cmm_of_int_log_op logop) args
-      | CI cmpop ->
-        sprintf "(Cop(%s,[%s],_))" (Op.cmm_of_int_cmp_op cmpop) args
+      | #Op.binary_int_ops as iop ->
+        sprintf "(Cop(%s,[%s],_))" (Op.cmm_of_binary_int_op iop) args
+
+  let rec cmm_expr_of_t ~dbg = function
+    | Const c ->
+      sprintf "(Cconst_int (%s,%s))" (Const.ocaml_of_t c) dbg
+    | Var v ->
+      Var.ocaml_of_t v
+    | Op { op; args } ->
+      let args = 
+        List.map args ~f:(cmm_expr_of_t ~dbg)
+        |> String.concat ~sep:"; "
+      in
+      match op with
+      | `Tagi ->
+        sprintf "(Cop(Caddi,[Cop(Clsl, [%s; Cconst_int(1,%s)],%s); Cconst_int(1,%s)],%s))"
+          args dbg dbg dbg dbg
+      | #Op.binary_int_ops as iop ->
+        sprintf "(Cop(%s,[%s],%s))" (Op.cmm_of_binary_int_op iop) args dbg
 
 
   let rec smt_of_t = function

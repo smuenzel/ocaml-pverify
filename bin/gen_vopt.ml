@@ -2,7 +2,7 @@ open! Core
 
 module S = Cmm_vopt.Subcmm
 
-let main () =
+let _main () =
   let example = Cmm_vopt.Schemes.example in
   let () =
     example
@@ -15,6 +15,20 @@ let main () =
     |> print_string
   in
   ()
+
+let main () =
+  let open Cmm_vopt in
+  let module Cmm = Spec_to_cmm.Cmm in
+  let es, ed = Schemes.example_spec in
+  let es =
+    Spec_to_cmm.pattern_cmm_of_spec es
+    |> Cmm.Print.print_expression
+  in
+  let ed =
+    Spec_to_cmm.expression_cmm_of_spec ed
+    |> Cmm.Print.print_expression
+  in
+  printf "| %s ->\n    %s\n" es ed
 
 let (command : Command.t) =
   let open Command.Let_syntax in

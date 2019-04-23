@@ -20,15 +20,25 @@ let main () =
   let open Cmm_vopt in
   let module Cmm = Spec_to_cmm.Cmm in
   let es, ed = Schemes.example_spec in
-  let es =
+  let es_cmm =
     Spec_to_cmm.pattern_cmm_of_spec es
-    |> Cmm.Print.print_expression
+  in
+  let es = 
+    Cmm.Print.print_expression es_cmm
+  in
+  let ed_cmm =
+    Spec_to_cmm.expression_cmm_of_spec ed
   in
   let ed =
-    Spec_to_cmm.expression_cmm_of_spec ed
-    |> Cmm.Print.print_expression
+    Cmm.Print.print_expression ed_cmm
   in
-  printf "| %s ->\n    %s\n" es ed
+  let size_input = Cmm.size_of_expression es_cmm in
+  let size_output = Cmm.size_of_expression ed_cmm in
+  printf "let opt_cmm cmm =\n";
+  printf "match cmm with\n";
+  printf "| %s ->\n" es;
+  printf "  (* Op Count: %i in -> %i out *)\n" size_input size_output;
+  printf "  %s\n" ed
 
 let (command : Command.t) =
   let open Command.Let_syntax in

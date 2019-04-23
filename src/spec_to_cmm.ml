@@ -26,6 +26,14 @@ module Cmm = struct
     | Xdbg_var of string
   [@@deriving sexp]
 
+  let rec size_of_expression = function
+    | Cop (_, elist, _) ->
+      1 + List.sum (module Int) ~f:size_of_expression elist
+    | Cconst_int _ ->
+      0
+    | Xexp_var _ ->
+      0
+
   module Print = struct
 
     let rec print_expression = function

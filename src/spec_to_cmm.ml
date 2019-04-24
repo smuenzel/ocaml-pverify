@@ -1,6 +1,7 @@
 open! Core
 
 module Cmm = struct
+  (* Constructors starting with "X" are pseudo-constructors not present in actual Cmm *)
   type expression =
     | Cop of operation * expression list * debuginfo
     | Cconst_int of int * debuginfo

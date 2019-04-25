@@ -1,6 +1,7 @@
 open! Core
+open Cmm_vopt
 
-let main () =
+let _main () =
   let open Cmm_vopt in
   let module Cmm = Spec_to_cmm.Cmm in
   let { Spec.Rule. input; output } = Schemes.example_spec in
@@ -29,15 +30,20 @@ let main () =
    |> List.iter ~f:(printf !"%{sexp:Sexp.t}\n")
   )
 
+let main ~smt_out ~ml_out:_ =
+  let rules = Schemes.all in
+  Smt_file.write ~filename:smt_out ~rules
+
 let (command : Command.t) =
   let open Command.Let_syntax in
   Command.basic
     ~summary:""
     [%map_open 
-      let () = return ()
+      let smt_out = flag "smt" (required string) ~doc:"smt output file"
+      and ml_out = flag "ml" (required string) ~doc:"ml output file"
       in
       fun () ->
-        main ()
+        main ~smt_out ~ml_out
     ]
 
 let () = Command.run command

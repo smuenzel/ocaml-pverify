@@ -25,3 +25,8 @@ let example_spec =
     input
   ; output
   }
+
+let all =
+  [ "tag-xor", example_spec
+  ]
+  |> String.Map.of_alist_exn

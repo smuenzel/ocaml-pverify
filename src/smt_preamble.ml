@@ -2,8 +2,8 @@ open! Core
 
 let defines =
   [ "BITS", "64"
-  ; "HIGHBIT", "63"
   ; "HIGHBIT2", "62"
+  ; "HIGHBIT", "63"
   ; "ZERO", "#x0000000000000000"
   ; "ONE", "#x0000000000000001"
   ; "NEGONE", "#x1111111111111111"
@@ -102,8 +102,9 @@ let preamble = {|
   |}
 
 
-let full_preamble =
+let full_preamble : string =
   List.fold ~init:preamble
+    defines
     ~f:(fun acc (pattern, with_) ->
         String.substr_replace_all ~pattern ~with_ acc
       )

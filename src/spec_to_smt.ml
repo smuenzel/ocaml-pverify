@@ -3,6 +3,7 @@ open! Core
 let smt_of_const (s_c : Spec.Const.t) : Smt.Expression.t =
   match s_c with
   | One -> Const One
+  | Three -> Const Three
   | Zero -> Const Zero
   | Neg_one -> Const Neg_one
 

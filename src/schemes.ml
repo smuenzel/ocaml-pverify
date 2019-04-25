@@ -122,6 +122,100 @@ let nested_compare =
         dbg
     end
 
+let nested_nequal_zero =
+  let r = new rule_helper in
+  r#make
+    begin
+      op2 (Compare (K NE))
+        (op2 (Compare (V (r#var_cmp "cmp_inner")))
+           (r#var_s "left")
+           (r#var_s "right")
+           (r#dbg_s "dbg")
+        )
+        (const Zero Spec.Debug.Source.Anon)
+        Anon
+    end
+    begin
+      let dbg = r#dbg_d "dbg" in
+      (op2 (Compare (V (r#var_cmp "cmp_inner")))
+         (r#var_d "left")
+         (r#var_d "right")
+         dbg
+      )
+    end
+
+let nested_nequal_one_tagged =
+  let r = new rule_helper in
+  r#make
+    begin
+      op2 (Compare (K NE))
+        (op1 Tagi 
+           (op2 (Compare (V (r#var_cmp "cmp_inner")))
+              (r#var_s "left")
+              (r#var_s "right")
+              (r#dbg_s "dbg")
+           )
+           Anon
+        )
+        (const One Spec.Debug.Source.Anon)
+        Anon
+    end
+    begin
+      let dbg = r#dbg_d "dbg" in
+      (op2 (Compare (V (r#var_cmp "cmp_inner")))
+         (r#var_d "left")
+         (r#var_d "right")
+         dbg
+      )
+    end
+
+let nested_equal_one =
+  let r = new rule_helper in
+  r#make
+    begin
+      op2 (Compare (K EQ))
+        (op2 (Compare (V (r#var_cmp "cmp_inner")))
+           (r#var_s "left")
+           (r#var_s "right")
+           (r#dbg_s "dbg")
+        )
+        (const One Spec.Debug.Source.Anon)
+        Anon
+    end
+    begin
+      let dbg = r#dbg_d "dbg" in
+      (op2 (Compare (V (r#var_cmp "cmp_inner")))
+         (r#var_d "left")
+         (r#var_d "right")
+         dbg
+      )
+    end
+
+let nested_equal_three_tagged =
+  let r = new rule_helper in
+  r#make
+    begin
+      op2 (Compare (K EQ))
+        (op1 Tagi 
+           (op2 (Compare (V (r#var_cmp "cmp_inner")))
+              (r#var_s "left")
+              (r#var_s "right")
+              (r#dbg_s "dbg")
+           )
+           Anon
+        )
+        (const Three Spec.Debug.Source.Anon)
+        Anon
+    end
+    begin
+      let dbg = r#dbg_d "dbg" in
+      (op2 (Compare (V (r#var_cmp "cmp_inner")))
+         (r#var_d "left")
+         (r#var_d "right")
+         dbg
+      )
+    end
+
 let example_spec = tag_xor
 
 let all =
@@ -129,6 +223,10 @@ let all =
   ; "tag-and", tag_and
   ; "tag-or", tag_or
   ; "nested-compare", nested_compare
+  ; "nested-nequal-zero", nested_nequal_zero
+  ; "nested-nequal-one-tagged", nested_nequal_one_tagged
+  ; "nested-equal-one", nested_equal_one
+  ; "nested-equal-three-tagged", nested_equal_three_tagged
   ]
   |> String.Map.of_alist_exn
 

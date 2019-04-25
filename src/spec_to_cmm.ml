@@ -91,6 +91,7 @@ let expand_debug : _ -> Cmm.debuginfo = function
 let expr_of_const ~dbg : Spec.Const.t -> Cmm.expression = function
   | Zero -> Cconst_int (0, expand_debug dbg)
   | One  -> Cconst_int (1, expand_debug dbg)
+  | Three -> Cconst_int (3, expand_debug dbg)
   | Neg_one -> Cconst_int (-1, expand_debug dbg)
 
 let expr_of_var var =

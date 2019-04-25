@@ -97,11 +97,13 @@ module Const = struct
   type t =
     | Zero
     | One
+    | Three
     | Neg_one
 
   let smt_of_t : t -> Sexp.t = function
     | Zero -> Atom (Smt_int.of_int 0)
     | One -> Atom (Smt_int.of_int 1)
+    | Three -> Atom (Smt_int.of_int 3)
     | Neg_one -> Atom (Smt_int.of_int (-1))
 end
 

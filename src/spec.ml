@@ -42,6 +42,7 @@ module Const = struct
   type t =
     | Zero
     | One
+    | Three
     | Neg_one
   [@@deriving sexp]
 end

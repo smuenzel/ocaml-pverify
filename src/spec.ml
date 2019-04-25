@@ -91,6 +91,14 @@ module Binary_op = struct
       | Logical of Logical.t
       | Compare of ([`Cmp], Compare.t) Or_variable.t
     [@@deriving sexp_of]
+
+    let all_vars = function
+      | Shift _
+      | Logical _
+      | Compare (K _) ->
+        Var.Name.Map.empty
+      | Compare (V v) ->
+        Var.Name.Map.singleton v.name (Var.T v)
   end
 
   type 'param t = 
@@ -138,7 +146,9 @@ module Phrase = struct
     | Const _ -> 
       Var.Name.Map.empty
     | Op1 { p1; _ } -> all_vars p1  
-    | Op2 { p1; p2; _ } -> Var.merge (all_vars p1) (all_vars p2)
+    | Op2 { p1; p2; kind } ->
+      Var.merge (all_vars p1) (all_vars p2)
+      |> Var.merge (Binary_op.Kind.all_vars kind)
 
 end
 
@@ -157,6 +167,12 @@ module Make = struct
     { Phrase.
       kind = Phrase.Const v
     ; debug
+    }
+
+  let var_cmp name =
+    { Var.
+      name = Var.Name.of_string name
+    ; kind = Cmp
     }
 
   let var name =

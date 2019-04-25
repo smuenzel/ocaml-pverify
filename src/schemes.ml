@@ -2,7 +2,16 @@ open! Core
 
 class rule_helper = object (self)
   val vars = String.Table.create ()
+  val vars_cmp = String.Table.create ()
   val debugs = String.Table.create ()
+
+  method var_cmp name =
+    match Hashtbl.find vars_cmp name with 
+    | Some var -> var
+    | None ->
+      let var = Spec.Make.var_cmp name in
+      Hashtbl.add_exn vars_cmp ~key:name ~data:var;
+      var
 
   method var name =
     match Hashtbl.find vars name with 
@@ -85,12 +94,41 @@ let tag_and =
       op1 Tagi (op2 (Logical And) (r#var_d "left") (r#var_d "right") dbg) dbg
     end
 
+let nested_compare =
+  let r = new rule_helper in
+  r#make
+    begin
+      op2 (Compare (V (r#var_cmp "cmp_outer")))
+        (op1 Tagi
+           (op2 (Compare (V (r#var_cmp "cmp_inner")))
+              (r#var_s "left")
+              (r#var_s "right")
+              (r#dbg_s "dbg")
+           )
+           Anon
+        )
+        (const One Spec.Debug.Source.Anon)
+        Anon
+    end
+    begin
+      let dbg = r#dbg_d "dbg" in
+      op2 (Compare (V (r#var_cmp "cmp_outer")))
+        (op2 (Compare (V (r#var_cmp "cmp_inner")))
+           (r#var_d "left")
+           (r#var_d "right")
+           dbg
+        )
+        (const Zero dbg)
+        dbg
+    end
+
 let example_spec = tag_xor
 
 let all =
   [ "tag-xor", tag_xor
   ; "tag-and", tag_and
   ; "tag-or", tag_or
+  ; "nested-compare", nested_compare
   ]
   |> String.Map.of_alist_exn
 

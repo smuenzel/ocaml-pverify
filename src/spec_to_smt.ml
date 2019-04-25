@@ -1,6 +1,6 @@
 open! Core
 
-let expr_of_const (s_c : Spec.Const.t) : Smt.Expression.t =
+let smt_of_const (s_c : Spec.Const.t) : Smt.Expression.t =
   match s_c with
   | One -> Const One
   | Zero -> Const Zero
@@ -14,11 +14,11 @@ let rec smt_of_phrase (phrase : _ Spec.Phrase.t) : Smt.Expression.t =
   in
   match kind with
   | Var v -> Var (Smt.Var.of_string (Spec.Var.Name.to_string v.name))
-  | Const c -> expr_of_const c
-  | Op1 op1 -> expr_of_op1 op1
-  | Op2 op2 -> expr_of_op2 op2
+  | Const c -> smt_of_const c
+  | Op1 op1 -> smt_of_op1 op1
+  | Op2 op2 -> smt_of_op2 op2
 
-and expr_of_op2 op2 =
+and smt_of_op2 op2 =
   let { Spec.Binary_op.
         kind
       ; p1
@@ -43,7 +43,7 @@ and expr_of_op2 op2 =
     ; p2
     }
 
-and expr_of_op1 op1 =
+and smt_of_op1 op1 =
   let { Spec.Unary_op.
         kind
       ; p1
@@ -61,3 +61,7 @@ and expr_of_op1 op1 =
           }
     ; p2 = Const One
     }
+
+let assert_not_rule { Spec.Rule. input; output } : Smt.phrase =
+  Assert_not (Equal (smt_of_phrase input, smt_of_phrase output))
+

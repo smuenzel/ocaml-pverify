@@ -5,7 +5,7 @@ let example_spec =
   let left_s, left_d = var "left" in
   let right_s, right_d = var "right" in
   let dbg_name = Spec.Debug.Source.Name.of_string "dbg_xor" in
-  let source =
+  let input =
     let dbg = Spec.Debug.Source.Anon in
     let debug_s = Spec.Debug.Source.Set dbg_name in
     op2 (Logical Or)
@@ -17,9 +17,11 @@ let example_spec =
       (const One dbg)
       dbg
   in
-  let destination =
+  let output =
     let dbg = Spec.Debug.Destination.From_source dbg_name in
     op1 Tagi (op2 (Logical Xor) left_d right_d dbg) dbg
   in
-  source
-, destination
+  { Spec.Rule.
+    input
+  ; output
+  }

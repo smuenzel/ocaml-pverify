@@ -59,6 +59,7 @@ module Cmm = struct
 
 
   end
+
 end
 
 let expand_debug : _ -> Cmm.debuginfo = function
@@ -148,3 +149,25 @@ let pattern_cmm_of_spec spec : Cmm.expression =
 
 let expression_cmm_of_spec spec : Cmm.expression =
   cmm_of_phrase ~combine_debug:combine_debug_destination ~dbg:None spec
+
+let to_match_case ?name rule =
+  let { Spec.Rule. input; output } = rule in
+  let input_cmm = pattern_cmm_of_spec input in
+  let input = Cmm.Print.print_expression input_cmm in
+  let output_cmm = expression_cmm_of_spec output in
+  let output = Cmm.Print.print_expression output_cmm in
+  let size_input = Cmm.size_of_expression input_cmm in
+  let size_output = Cmm.size_of_expression output_cmm in
+  let maybe_name =
+    match name with
+    | None ->      "  (* "
+    | Some name -> "  (* " ^ name ^ "\n     "
+  in
+  String.concat ~sep:"\n"
+    [ sprintf "| %s ->\n" input
+    ; sprintf "%s Op Count: %i in -> %i out *)\n" maybe_name size_input size_output
+    ; sprintf "  %s\n" output
+    ]
+
+
+

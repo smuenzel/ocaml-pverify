@@ -44,9 +44,9 @@ module Ocaml_op2 = struct
       | Cmp of Compare.t
       | Addi
 
-    let smt_op2 name p1 p2 =
-      Sexp.List
-        [ Sexp.Atom name
+    let smt_op2 name p1 p2 : Sexp.t =
+      List
+        [ Atom name
         ; p1
         ; p2
         ]
@@ -61,8 +61,8 @@ module Ocaml_op2 = struct
       | Addi -> smt_op2 "ocaml-addi"
       | Cmp cmp -> 
         fun p1 p2 ->
-        Sexp.List
-          [ Sexp.Atom "ocaml-cmp"
+        List
+          [ Atom "ocaml-cmp"
           ; [%sexp_of: Compare.t] cmp
           ; p1
           ; p2
@@ -91,10 +91,10 @@ module Const = struct
     | One
     | Neg_one
 
-  let smt_of_t = function
-    | Zero -> Sexp.Atom (Smt_int.of_int 0)
-    | One -> Sexp.Atom (Smt_int.of_int 1)
-    | Neg_one -> Sexp.Atom (Smt_int.of_int (-1))
+  let smt_of_t : t -> Sexp.t = function
+    | Zero -> Atom (Smt_int.of_int 0)
+    | One -> Atom (Smt_int.of_int 1)
+    | Neg_one -> Atom (Smt_int.of_int (-1))
 end
 
 module Expression = struct
@@ -105,7 +105,7 @@ module Expression = struct
 
   let rec smt_of_t = function
     | Const const -> Const.smt_of_t const
-    | Var var -> Sexp.Atom (Var.to_string var)
+    | Var var -> Atom (Var.to_string var)
     | Ocaml_op2 op2 ->
       Ocaml_op2.smt_of_t smt_of_t op2
 
@@ -123,22 +123,25 @@ type phrase =
   | Check_sat
   | Get_model
   | Assert_not of assertion
+  | Echo of string
 and assertion =
   | Equal of Expression.t * Expression.t
 
-let smt_of_assertion = function
+let smt_of_assertion : _ -> Sexp.t = function
   | Equal (a,b) ->
-    Sexp.List
-      [ Sexp.Atom "="
+    List
+      [ Atom "="
       ; Expression.smt_of_t a
       ; Expression.smt_of_t b
       ]
 
-let smt_of_phrase = function
-  | Push i -> Sexp.List [ Sexp.Atom "push"; [%sexp_of:int] i ]
-  | Pop i -> Sexp.List [ Sexp.Atom "pop"; [%sexp_of:int] i ]
-  | Check_sat -> Sexp.List [ Sexp.Atom "check-sat" ]
-  | Get_model -> Sexp.List [ Sexp.Atom "get-model" ]
+let smt_of_phrase : _ -> Sexp.t = function
+  | Push i -> List [ Atom "push"; [%sexp_of:int] i ]
+  | Pop i -> List [ Atom "pop"; [%sexp_of:int] i ]
+  | Check_sat -> List [ Atom "check-sat" ]
+  | Get_model -> List [ Atom "get-model" ]
   | Assert_not assertion ->
-    Sexp.List [ Sexp.Atom "assert-not"; smt_of_assertion assertion ]
+    List [ Atom "assert-not"; smt_of_assertion assertion ]
+  | Echo string ->
+    List [ Atom "echo"; [%sexp_of: string] string ]
 

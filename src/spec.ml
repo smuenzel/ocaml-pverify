@@ -102,6 +102,13 @@ module Phrase = struct
 
 end
 
+module Rule = struct
+  type t =
+    { input : Debug.Source.t Phrase.t
+    ; output : Debug.Destination.t Phrase.t
+    } [@@deriving sexp]
+end
+
 module Make = struct
   let const v debug =
     { Phrase.

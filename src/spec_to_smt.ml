@@ -65,3 +65,26 @@ and smt_of_op1 op1 =
 let assert_not_rule { Spec.Rule. input; output } : Smt.phrase =
   Assert_not (Equal (smt_of_phrase input, smt_of_phrase output))
 
+let verify name rule : Smt.phrase list =
+  let open Smt in
+  let vars = Spec.Rule.all_vars rule in
+  let declare_vars =
+    Set.to_list vars
+    |> List.map
+      ~f:(fun var ->
+          Declare_const { name = Spec.Var.Name.to_string var
+                        ; typ = "ocaml-int"
+                        }
+        )
+  in
+  List.concat
+    [ [ Push 1
+      ; Echo ("verifying " ^ name)
+      ]
+    ; declare_vars
+    ; [ assert_not_rule rule 
+      ; Check_sat
+      ; Pop 1
+      ]
+    ]
+

@@ -124,6 +124,7 @@ type phrase =
   | Get_model
   | Assert_not of assertion
   | Echo of string
+  | Declare_const of { name : string; typ : string }
 and assertion =
   | Equal of Expression.t * Expression.t
 
@@ -144,4 +145,6 @@ let smt_of_phrase : _ -> Sexp.t = function
     List [ Atom "assert-not"; smt_of_assertion assertion ]
   | Echo string ->
     List [ Atom "echo"; [%sexp_of: string] string ]
+  | Declare_const { name; typ } ->
+    List [ Atom "declare-const"; Atom name; Atom typ ]
 

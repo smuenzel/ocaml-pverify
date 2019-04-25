@@ -100,6 +100,13 @@ module Phrase = struct
     }
   [@@deriving sexp]
 
+  let rec all_vars { kind; debug = _ } =
+    match kind with
+    | Var var -> Var.Name.Set.singleton var.name
+    | Const _ -> Var.Name.Set.empty
+    | Op1 { p1; _ } -> all_vars p1  
+    | Op2 { p1; p2; _ } -> Set.union (all_vars p1) (all_vars p2)
+
 end
 
 module Rule = struct
@@ -107,6 +114,10 @@ module Rule = struct
     { input : Debug.Source.t Phrase.t
     ; output : Debug.Destination.t Phrase.t
     } [@@deriving sexp]
+
+  let all_vars { input; output } =
+    Set.union (Phrase.all_vars input) (Phrase.all_vars output)
+
 end
 
 module Make = struct

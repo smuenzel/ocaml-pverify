@@ -22,7 +22,12 @@ let main () =
   printf "match cmm with\n";
   printf "| %s ->\n" input;
   printf "  (* Op Count: %i in -> %i out *)\n" size_input size_output;
-  printf "  %s\n" output
+  printf "  %s\n" output;
+  printf "\n";
+  (Spec_to_smt.verify "example" Schemes.example_spec
+   |> List.map ~f:Smt.smt_of_phrase
+   |> List.iter ~f:(printf !"%{sexp:Sexp.t}\n")
+  )
 
 let (command : Command.t) =
   let open Command.Let_syntax in

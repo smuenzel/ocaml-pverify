@@ -42,6 +42,7 @@ module Ocaml_op2 = struct
       | Or
       | Xor
       | Cmp of Compare.t
+      | Addi
 
     let smt_op2 name p1 p2 =
       Sexp.List
@@ -57,6 +58,7 @@ module Ocaml_op2 = struct
       | Lsr -> smt_op2 "ocaml-lsr"
       | Or  -> smt_op2 "ocaml-or"
       | Xor -> smt_op2 "ocaml-xor"
+      | Addi -> smt_op2 "ocaml-addi"
       | Cmp cmp -> 
         fun p1 p2 ->
         Sexp.List

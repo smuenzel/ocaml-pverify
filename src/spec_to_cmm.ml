@@ -14,7 +14,7 @@ module Cmm = struct
     | Clsl
     | Clsr
     | Casr
-    | Ccmpi of integer_comparison
+    | Ccmpi of ([`Cmp], integer_comparison) Spec.Or_variable.t
   and integer_comparison =
     | Ceq
     | Cne
@@ -25,7 +25,7 @@ module Cmm = struct
   and debuginfo =
     | Xdbg_anon
     | Xdbg_var of string
-  [@@deriving sexp]
+  [@@deriving sexp_of]
 
   let rec size_of_expression = function
     | Cop (_, elist, _) ->
@@ -59,8 +59,22 @@ module Cmm = struct
         let dbg = print_debuginfo debuginfo in
         sprintf "Cconst_int (%i,%s)" i dbg
       | Xexp_var s -> s
-    and print_operation op =
-      Sexp.to_string ([%sexp_of: operation] op)
+    and print_operation = function
+      | Caddi
+      | Cand
+      | Cor
+      | Cxor
+      | Clsl
+      | Clsr
+      | Casr
+        as op ->
+        Sexp.to_string ([%sexp_of: operation] op)
+      | Ccmpi (K cmp) ->
+        List [ Atom "Ccmpi"; sexp_of_integer_comparison cmp ]
+        |> Sexp.to_string
+      | Ccmpi (V cmp) ->
+        List [ Atom "Ccmpi"; cmp.Spec.Var.name |> Spec.Var.Name.to_string |> Atom ]
+        |> Sexp.to_string
     and print_debuginfo = function
       | Xdbg_anon -> "_"
       | Xdbg_var s -> s
@@ -119,7 +133,7 @@ and expr_of_op2 ~combine_debug ~dbg op2 =
     | Logical And -> Cand
     | Logical Xor -> Cxor
     | Compare cmp ->
-      Ccmpi (compare_of_compare cmp)
+      Ccmpi (Spec.Or_variable.map ~f:compare_of_compare cmp)
   in
   let p1 = cmm_of_phrase ~combine_debug ~dbg p1 in
   let p2 = cmm_of_phrase ~combine_debug ~dbg p2 in

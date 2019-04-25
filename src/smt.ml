@@ -41,7 +41,7 @@ module Ocaml_op2 = struct
       | Lsr
       | Or
       | Xor
-      | Cmp of Compare.t
+      | Cmp of ([`Cmp], Compare.t) Spec.Or_variable.t
       | Addi
 
     let smt_op2 name p1 p2 : Sexp.t =
@@ -59,14 +59,22 @@ module Ocaml_op2 = struct
       | Or  -> smt_op2 "ocaml-or"
       | Xor -> smt_op2 "ocaml-xor"
       | Addi -> smt_op2 "ocaml-addi"
-      | Cmp cmp -> 
+      | Cmp (K cmp) -> 
         fun p1 p2 ->
-        List
-          [ Atom "ocaml-cmp"
-          ; [%sexp_of: Compare.t] cmp
-          ; p1
-          ; p2
-          ]
+          List
+            [ Atom "ocaml-cmp"
+            ; [%sexp_of: Compare.t] cmp
+            ; p1
+            ; p2
+            ]
+      | Cmp (V cmp) -> 
+        fun p1 p2 ->
+          List
+            [ Atom "ocaml-cmp"
+            ; Atom (Spec.Var.Name.to_string cmp.name)
+            ; p1
+            ; p2
+            ]
 
   end
 

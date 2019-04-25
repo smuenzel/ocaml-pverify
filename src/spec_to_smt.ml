@@ -69,12 +69,18 @@ let verify name rule : Smt.phrase list =
   let open Smt in
   let vars = Spec.Rule.all_vars rule in
   let declare_vars =
-    Set.to_list vars
-    |> List.map
-      ~f:(fun var ->
-          Declare_const { name = Spec.Var.Name.to_string var
-                        ; typ = "ocaml-int"
+    Map.fold vars ~init:[]
+      ~f:(fun ~key:_ ~data acc ->
+          let Spec.Var.T { name; kind } = data in
+          let typ =
+            match kind with
+            | Int -> "ocaml-int"
+            | Cmp -> "CMP"
+          in
+          Declare_const { name = Spec.Var.Name.to_string name
+                        ; typ
                         }
+          :: acc
         )
   in
   List.concat

@@ -1,5 +1,43 @@
 open! Core
 
+module Var = struct
+  module Name = String_id.Make(struct let module_name = "Spec.Var.Name" end)( )
+  type _ kind =
+    | Int : [`Int] kind
+    | Cmp : [`Cmp] kind
+  [@@deriving sexp_of]
+
+  type 'kind t =
+    { name : Name.t
+    ; kind : 'kind kind
+    } [@@deriving sexp_of]
+
+  type packed =
+    | T : _ t -> packed
+
+  let merge a b =
+    Map.merge a b
+      ~f:(fun ~key -> function
+          | `Left left -> Some left
+          | `Right right -> Some right
+          | `Both (left, right) ->
+            if left <> right
+            then raise_s [%message "vars of different types" (key : Name.t)]
+            else Some left
+        )
+end
+
+module Or_variable = struct
+  type ('vartype, 'kind) t =
+    | V of 'vartype Var.t
+    | K of 'kind
+  [@@deriving sexp_of]
+
+  let map ~f = function
+    | V v -> V v
+    | K k -> K (f k)
+end
+
 module Const = struct
   type t =
     | Zero
@@ -51,15 +89,15 @@ module Binary_op = struct
     type t =
       | Shift of Shift.t
       | Logical of Logical.t
-      | Compare of Compare.t
-    [@@deriving sexp]
+      | Compare of ([`Cmp], Compare.t) Or_variable.t
+    [@@deriving sexp_of]
   end
 
   type 'param t = 
     { kind : Kind.t
     ; p1  : 'param
     ; p2  : 'param
-    } [@@deriving sexp]
+    } [@@deriving sexp_of]
 
 end
 
@@ -81,16 +119,9 @@ module Debug = struct
 
 end
 
-module Var = struct
-  module Name = String_id.Make(struct let module_name = "Spec.Var.Name" end)( )
-  type t =
-    { name : Name.t
-    } [@@deriving sexp]
-end
-
 module Phrase = struct
   type 'debug kind =
-    | Var of Var.t
+    | Var of [`Int] Var.t
     | Const of Const.t
     | Op1 of 'debug t Unary_op.t
     | Op2 of 'debug t Binary_op.t
@@ -98,14 +129,16 @@ module Phrase = struct
     { kind : 'debug kind
     ; debug : 'debug
     }
-  [@@deriving sexp]
+  [@@deriving sexp_of]
 
   let rec all_vars { kind; debug = _ } =
     match kind with
-    | Var var -> Var.Name.Set.singleton var.name
-    | Const _ -> Var.Name.Set.empty
+    | Var var ->
+      Var.Name.Map.singleton var.name (Var.T var)
+    | Const _ -> 
+      Var.Name.Map.empty
     | Op1 { p1; _ } -> all_vars p1  
-    | Op2 { p1; p2; _ } -> Set.union (all_vars p1) (all_vars p2)
+    | Op2 { p1; p2; _ } -> Var.merge (all_vars p1) (all_vars p2)
 
 end
 
@@ -113,11 +146,10 @@ module Rule = struct
   type t =
     { input : Debug.Source.t Phrase.t
     ; output : Debug.Destination.t Phrase.t
-    } [@@deriving sexp]
+    } [@@deriving sexp_of]
 
   let all_vars { input; output } =
-    Set.union (Phrase.all_vars input) (Phrase.all_vars output)
-
+    Var.merge (Phrase.all_vars input) (Phrase.all_vars output)
 end
 
 module Make = struct
@@ -133,6 +165,7 @@ module Make = struct
         Phrase.Var
           { Var.
             name = Var.Name.of_string name
+          ; kind = Int
           }
     ; debug = Debug.Source.Anon 
     }
@@ -141,6 +174,7 @@ module Make = struct
        Phrase.Var
          { Var.
            name = Var.Name.of_string name
+         ; kind = Int
          }
    ; debug = Debug.Destination.Inherit
    }

@@ -37,8 +37,9 @@ class rule_helper = object (self)
     }
 end
 
+open Spec.Make
+
 let tag_xor =
-  let open Spec.Make in
   let r = new rule_helper in
   r#make
     begin
@@ -56,10 +57,40 @@ let tag_xor =
       op1 Tagi (op2 (Logical Xor) (r#var_d "left") (r#var_d "right") dbg) dbg
     end
 
+let tag_or =
+  let r = new rule_helper in
+  r#make
+    begin
+      op2 (Logical Or)
+        (op1 Tagi (r#var_s "left") Anon)
+        (op1 Tagi (r#var_s "right") Anon)
+        (r#dbg_s "dbg_op")
+    end
+    begin
+      let dbg = r#dbg_d "dbg_op" in
+      op1 Tagi (op2 (Logical Or) (r#var_d "left") (r#var_d "right") dbg) dbg
+    end
+
+let tag_and =
+  let r = new rule_helper in
+  r#make
+    begin
+      op2 (Logical And)
+        (op1 Tagi (r#var_s "left") Anon)
+        (op1 Tagi (r#var_s "right") Anon)
+        (r#dbg_s "dbg_op")
+    end
+    begin
+      let dbg = r#dbg_d "dbg_op" in
+      op1 Tagi (op2 (Logical And) (r#var_d "left") (r#var_d "right") dbg) dbg
+    end
+
 let example_spec = tag_xor
 
 let all =
   [ "tag-xor", tag_xor
+  ; "tag-and", tag_and
+  ; "tag-or", tag_or
   ]
   |> String.Map.of_alist_exn
 

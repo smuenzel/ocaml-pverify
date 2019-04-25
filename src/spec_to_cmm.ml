@@ -35,6 +35,14 @@ module Cmm = struct
     | Xexp_var _ ->
       0
 
+  let rec count_heads = function
+    | Cop (_, elist, _) ->
+      1 + List.sum (module Int) ~f:count_heads elist
+    | Cconst_int _ ->
+      1
+    | Xexp_var _ ->
+      1
+
   module Print = struct
 
     let rec print_expression = function
@@ -157,16 +165,19 @@ let to_match_case ?name rule =
   let output_cmm = expression_cmm_of_spec output in
   let output = Cmm.Print.print_expression output_cmm in
   let size_input = Cmm.size_of_expression input_cmm in
+  let heads_input = Cmm.count_heads input_cmm in
   let size_output = Cmm.size_of_expression output_cmm in
+  let heads_output = Cmm.count_heads output_cmm in
   let maybe_name =
     match name with
     | None ->      "  (* "
     | Some name -> "  (* " ^ name ^ "\n     "
   in
   String.concat ~sep:"\n"
-    [ sprintf "| %s ->\n" input
-    ; sprintf "%s Op Count: %i in -> %i out *)\n" maybe_name size_input size_output
-    ; sprintf "  %s\n" output
+    [ sprintf "| %s ->" input
+    ; sprintf "%s Size: (%i ops, %i heads) in -> (%i ops, %i heads) out *)"
+        maybe_name size_input heads_input size_output heads_output
+    ; sprintf "  %s" output
     ]
 
 

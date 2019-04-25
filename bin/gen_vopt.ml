@@ -30,9 +30,12 @@ let _main () =
    |> List.iter ~f:(printf !"%{sexp:Sexp.t}\n")
   )
 
-let main ~smt_out ~ml_out:_ =
+let main ~smt_out ~ml_out =
   let rules = Schemes.all in
-  Smt_file.write ~filename:smt_out ~rules
+  Smt_file.write ~filename:smt_out ~rules;
+  Cmm_file.write ~filename:ml_out ~rules ~fname:"reduce_cmm";
+;;
+
 
 let (command : Command.t) =
   let open Command.Let_syntax in

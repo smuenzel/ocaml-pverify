@@ -88,6 +88,11 @@ module Const = struct
     | Zero
     | One
     | Neg_one
+
+  let smt_of_t = function
+    | Zero -> Sexp.Atom (Smt_int.of_int 0)
+    | One -> Sexp.Atom (Smt_int.of_int 1)
+    | Neg_one -> Sexp.Atom (Smt_int.of_int (-1))
 end
 
 module Expression = struct
@@ -95,6 +100,12 @@ module Expression = struct
     | Const of Const.t
     | Var of Var.t
     | Ocaml_op2 of t Ocaml_op2.t
+
+  let rec smt_of_t = function
+    | Const const -> Const.smt_of_t const
+    | Var var -> Sexp.Atom (Var.to_string var)
+    | Ocaml_op2 op2 ->
+      Ocaml_op2.smt_of_t smt_of_t op2
 
 end
 
@@ -112,4 +123,20 @@ type phrase =
   | Assert_not of assertion
 and assertion =
   | Equal of Expression.t * Expression.t
+
+let smt_of_assertion = function
+  | Equal (a,b) ->
+    Sexp.List
+      [ Sexp.Atom "="
+      ; Expression.smt_of_t a
+      ; Expression.smt_of_t b
+      ]
+
+let smt_of_phrase = function
+  | Push i -> Sexp.List [ Sexp.Atom "push"; [%sexp_of:int] i ]
+  | Pop i -> Sexp.List [ Sexp.Atom "pop"; [%sexp_of:int] i ]
+  | Check_sat -> Sexp.List [ Sexp.Atom "check-sat" ]
+  | Get_model -> Sexp.List [ Sexp.Atom "get-model" ]
+  | Assert_not assertion ->
+    Sexp.List [ Sexp.Atom "assert-not"; smt_of_assertion assertion ]
 

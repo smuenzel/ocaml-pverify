@@ -66,6 +66,17 @@ let preamble = {|
 (define-fun ocaml-modi ((x ocaml-int) (y ocaml-int)) ocaml-int
   (bvsrem x y))
 
+; Truncated division, characterised without a divider circuit:
+; a = q * b + r, |r| < |b|, and r is zero or has the sign of a
+; (computed in 128 bits, where nothing overflows)
+(define-fun divi-spec ((a ocaml-int) (b ocaml-int) (q ocaml-int) (r ocaml-int)) Bool
+  (let ((A ((_ sign_extend 64) a)) (B ((_ sign_extend 64) b))
+        (Q ((_ sign_extend 64) q)) (R ((_ sign_extend 64) r))
+        (Z ((_ zero_extend 64) ZERO)))
+  (and (= A (bvadd (bvmul Q B) R))
+       (bvslt (ite (bvslt R Z) (bvneg R) R) (ite (bvslt B Z) (bvneg B) B))
+       (or (= R Z) (= (bvslt R Z) (bvslt A Z))))))
+
 (define-fun ocaml-tagi ((x ocaml-int)) ocaml-int
   (bvadd (ocaml-lsl x ONE) ONE))
 

@@ -30,7 +30,8 @@ let _main () =
    |> List.iter ~f:(printf !"%{sexp:Sexp.t}\n")
   )
 
-let main ~smt_out ~ml_out ~compiler_smt ~compiler_smt_dir ~instances_dir ~divisors =
+let main ~smt_out ~ml_out ~compiler_smt ~compiler_smt_dir ~instances_dir ~divisors
+    ~magic_dir =
   let rules = Schemes.all in
   Smt_file.write ~filename:smt_out ~rules:(Map.to_alist rules);
   Cmm_file.write ~filename:ml_out ~rules ~fname:"reduce_cmm";
@@ -41,7 +42,18 @@ let main ~smt_out ~ml_out ~compiler_smt ~compiler_smt_dir ~instances_dir ~diviso
       Smt_file.write_dir ~dirname ~rules:Compiler_rules.all);
   Option.iter instances_dir ~f:(fun dirname ->
       Core_unix.mkdir_p dirname;
-      Smt_file.write_dir ~dirname ~rules:(Compiler_rules.instances ~divisors ()))
+      Smt_file.write_dir ~dirname ~rules:(Compiler_rules.instances ~divisors ()));
+  Option.iter magic_dir ~f:(fun dirname ->
+      Core_unix.mkdir_p dirname;
+      let divisors =
+        if List.is_empty divisors then Compiler_rules.magic_divisors else divisors
+      in
+      (* a few controls, which must fail *)
+      let controls = List.take divisors 3 in
+      Magic_division.write_dir ~dirname ~divisors:controls ~controls:true
+        ~first_index:0;
+      Magic_division.write_dir ~dirname ~divisors ~controls:false
+        ~first_index:(List.length controls))
 ;;
 
 
@@ -64,9 +76,13 @@ let (command : Command.t) =
       and divisors =
         flag "divisor" (listed int)
           ~doc:"N only instantiate the division rules with this divisor (repeatable)"
+      and magic_dir =
+        flag "magic-division-dir" (optional string)
+          ~doc:"DIR integer-arithmetic checks of the multiply-high division"
       in
       fun () ->
         main ~smt_out ~ml_out ~compiler_smt ~compiler_smt_dir ~instances_dir ~divisors
+          ~magic_dir
     ]
 
 let () = Command_unix.run command

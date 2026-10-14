@@ -1,5 +1,6 @@
 module Cmm_file = Cmm_file
 module Compiler_rules = Compiler_rules
+module Magic_division = Magic_division
 module Schemes = Schemes
 module Smt_file = Smt_file
 module Smt = Smt

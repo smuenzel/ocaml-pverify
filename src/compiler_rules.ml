@@ -521,8 +521,32 @@ let all = Queue.to_list rules
 
 (* Rules whose symbolic form is too hard for the solver (division and
    multiplication by a symbolic constant), instantiated with concrete
-   constants. The division parameters are those computed by the compiler's
-   own [divimm_parameters] (see [Divimm]). *)
+   constants. The multiply-high division is instantiated separately, in
+   [Magic_division]. *)
+let is_power2 d = d > 0 && d land (d - 1) = 0
+
+let powers = List.map (List.range 1 62) ~f:(fun l -> 1 lsl l)
+
+(* Positive divisors that are not powers of 2 *)
+let default_divisors =
+  List.filter (List.range 3 64) ~f:(fun d -> not (is_power2 d))
+  @ [ 100; 641; 1000; 1_000_000_007; 0x7FFF_FFFF; 0x1_0000_0001
+    ; 0x3FFF_FFFF_FFFF_FFFF (* max_int *); 0x3FFF_FFFF_FFFF_FFFD
+    ; 0x2AAA_AAAA_AAAA_AAAB; (1 lsl 61) + 1; (1 lsl 61) - 1 ]
+
+(* For the multiply-high division, which is checked in integer arithmetic
+   (see [Magic_division]) and cheap enough for many divisors *)
+let magic_divisors =
+  let rand = Random.State.make [| 42 |] in
+  List.filter (List.range 3 5000) ~f:(fun d -> not (is_power2 d))
+  @ List.concat_map (List.range 13 62) ~f:(fun l ->
+      List.filter [ (1 lsl l) - 1; (1 lsl l) + 1; (1 lsl l) - 3; (1 lsl l) + 3 ]
+        ~f:(fun d -> d <= Int.max_value))
+  @ List.init 1000 ~f:(fun _ -> 5000 + Random.State.int rand (Int.max_value - 5000))
+  @ default_divisors
+  |> List.filter ~f:(fun d -> not (is_power2 d))
+  |> List.dedup_and_sort ~compare:Int.compare
+
 let instances ?(divisors = []) () =
   let find name = List.Assoc.find_exn all name ~equal:String.equal in
   let inst name values =
@@ -532,29 +556,11 @@ let instances ?(divisors = []) () =
     in
     name ^ "@" ^ suffix, Rule.instantiate (find name) ~values
   in
-  let is_power2 d = d > 0 && d land (d - 1) = 0 in
-  let powers = List.map (List.range 1 62) ~f:(fun l -> 1 lsl l) in
-  let divisors =
-    if not (List.is_empty divisors) then divisors
-    else
-      List.filter (List.range 3 64) ~f:(fun d -> not (is_power2 d))
-      @ [ 100; 641; 1000; 1_000_000_007; 0x7FFF_FFFF; 0x1_0000_0001
-        ; 0x3FFF_FFFF_FFFF_FFFF (* max_int *); 0x3FFF_FFFF_FFFF_FFFD
-        ; 0x2AAA_AAAA_AAAA_AAAB; (1 lsl 61) + 1; (1 lsl 61) - 1 ]
-  in
+  let divisors = if List.is_empty divisors then default_divisors else divisors in
   let n v = [ "n", Int64.of_int v ] in
   List.concat
     [ List.map powers ~f:(fun d -> inst "div_int:448/power2" (n d))
     ; List.map powers ~f:(fun d -> inst "mod_int:504/power2" (n d))
-    ; List.map divisors ~f:(fun d ->
-          let m, p = Divimm.divimm_parameters d in
-          let variant =
-            sprintf "div_int:471/magic%s%s"
-              (if Int64.(m < 0L) then "-m<0" else "-m>=0")
-              (if p > 0 then "-p>0" else "-p=0")
-          in
-          inst variant
-            [ "n", Int64.of_int d; "m", m; "p", Int64.of_int p ])
     ; List.map (divisors @ powers) ~f:(fun d -> inst "div_int:466/negative" (n (-d)))
     ; List.map (divisors @ List.map divisors ~f:Int.neg @ List.map powers ~f:Int.neg)
         ~f:(fun d -> inst "mod_int:521/other" (n d))

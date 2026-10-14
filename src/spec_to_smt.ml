@@ -130,6 +130,9 @@ type ctx =
   { mutable counter : int
   ; mutable fresh : string list
   ; mutable assumptions : Sexp.t list
+  (* quotient and remainder variables, shared by divisions of the same
+     operands *)
+  ; divisions : (Sexp.t * Sexp.t, string * string) Hashtbl.Poly.t
   }
 
 let load_fun (chunk : Spec.Chunk.t) (endian : Spec.Endian.t) =
@@ -183,10 +186,25 @@ let rec phrase ctx (p : _ Spec.Phrase.t) : Sexp.t * Sexp.t list =
          | Mul -> app "ocaml-muli" [ a; b ], []
          | Mulhi -> app "ocaml-mulhi" [ a; b ], []
          | Div | Mod ->
-           let f = match ar with Div -> "ocaml-divi" | _ -> "ocaml-modi" in
-           app f [ a; b ],
-           [ ne b zero
-           ; not_ (and_ [ eq a (atom "#x8000000000000000"); eq b (int (-1)) ]) ])
+           (* The quotient and remainder are fresh variables constrained by
+              [divi-spec] when the division is defined; this avoids
+              bit-blasting a divider. *)
+           let defined =
+             [ ne b zero
+             ; not_ (and_ [ eq a (atom "#x8000000000000000"); eq b (int (-1)) ]) ]
+           in
+           let q, r =
+             Hashtbl.find_or_add ctx.divisions (a, b) ~default:(fun () ->
+                 ctx.counter <- ctx.counter + 1;
+                 let q = sprintf "quot_%i" ctx.counter in
+                 let r = sprintf "rem_%i" ctx.counter in
+                 ctx.fresh <- r :: q :: ctx.fresh;
+                 ctx.assumptions <-
+                   implies (and_ defined) (app "divi-spec" [ a; b; atom q; atom r ])
+                   :: ctx.assumptions;
+                 q, r)
+           in
+           atom (match ar with Div -> q | _ -> r), defined)
       | Compare c -> app "ocaml-cmp" [ smt_of_icmp c; a; b ], []
       | Compare_unsigned c -> app "ocaml-cmpa" [ smt_of_icmp c; a; b ], []
     in
@@ -267,7 +285,9 @@ let verify ?(get_values = false) ?(check_vacuity = false) name (rule : Spec.Rule
         | Const -> Some (app "ocaml-highest-bits-same" [ atom (var_name v) ])
         | _ -> ignore packed; None)
   in
-  let ctx = { counter = 0; fresh = []; assumptions = [] } in
+  let ctx =
+    { counter = 0; fresh = []; assumptions = []; divisions = Hashtbl.Poly.create () }
+  in
   let input, input_defined = phrase ctx rule.input in
   let output, output_defined = phrase ctx rule.output in
   let pre = List.map rule.pre ~f:(smt_of_pre ctx) in

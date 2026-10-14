@@ -1,7 +1,14 @@
 open! Core
 
 module Var = struct
-  module Name = String_id.Make(struct let module_name = "Spec.Var.Name" end)( )
+  module Name =
+    (val String_id.make
+        ~module_name:"Spec.Var.Name"
+        ~include_default_validation:true
+        ~caller_identity:String_id.legacy_identity
+        ()
+    )
+
   type _ kind =
     | Int : [`Int] kind
     | Cmp : [`Cmp] kind
@@ -21,7 +28,7 @@ module Var = struct
           | `Left left -> Some left
           | `Right right -> Some right
           | `Both (left, right) ->
-            if left <> right
+            if Poly.(left <> right)
             then raise_s [%message "vars of different types" (key : Name.t)]
             else Some left
         )
@@ -112,7 +119,13 @@ end
 
 module Debug = struct
   module Source = struct
-    module Name = String_id.Make(struct let module_name = "Spec.Debug.Source.Name" end)( )
+    module Name =
+      (val String_id.make
+          ~module_name:"Spec.Debug.Source.Name"
+          ~include_default_validation:true
+          ~caller_identity:String_id.legacy_identity
+          ()
+      )
 
     type t =
       | Anon
@@ -140,7 +153,7 @@ module Phrase = struct
     }
   [@@deriving sexp_of]
 
-  let rec all_vars { kind; debug = _ } =
+  let rec all_vars { kind; debug = _ } : Var.packed Var.Name.Map.t =
     match kind with
     | Var var ->
       Var.Name.Map.singleton var.name (Var.T var)

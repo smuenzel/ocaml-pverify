@@ -91,7 +91,13 @@ module Ocaml_op2 = struct
       (smt_of_param p2)
 end
 
-module Var = String_id.Make(struct let module_name = "Smt.Var" end)( )
+module Var =
+  (val String_id.make
+      ~module_name:"Smt.Var"
+      ~include_default_validation:true
+      ~caller_identity:String_id.legacy_identity
+      ()
+  )
 
 module Const = struct
   type t =

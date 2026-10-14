@@ -49,4 +49,4 @@ let (command : Command.t) =
         main ~smt_out ~ml_out
     ]
 
-let () = Command.run command
+let () = Command_unix.run command

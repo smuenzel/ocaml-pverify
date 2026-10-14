@@ -31,7 +31,7 @@ let _main () =
   )
 
 let main ~smt_out ~ml_out ~compiler_smt ~compiler_smt_dir ~instances_dir ~divisors
-    ~magic_dir =
+    ~magic_dir ~int_dir =
   let rules = Schemes.all in
   Smt_file.write ~filename:smt_out ~rules:(Map.to_alist rules);
   Cmm_file.write ~filename:ml_out ~rules ~fname:"reduce_cmm";
@@ -43,6 +43,11 @@ let main ~smt_out ~ml_out ~compiler_smt ~compiler_smt_dir ~instances_dir ~diviso
   Option.iter instances_dir ~f:(fun dirname ->
       Core_unix.mkdir_p dirname;
       Smt_file.write_dir ~dirname ~rules:(Compiler_rules.instances ~divisors ()));
+  Option.iter int_dir ~f:(fun dirname ->
+      Core_unix.mkdir_p dirname;
+      let unsupported = Spec_to_int.write_dir ~dirname ~rules:Compiler_rules.all in
+      List.iter unsupported ~f:(fun (name, reason) ->
+          eprintf "integer encoding: skipping %s (%s)\n" name reason));
   Option.iter magic_dir ~f:(fun dirname ->
       Core_unix.mkdir_p dirname;
       let divisors =
@@ -79,10 +84,13 @@ let (command : Command.t) =
       and magic_dir =
         flag "magic-division-dir" (optional string)
           ~doc:"DIR integer-arithmetic checks of the multiply-high division"
+      and int_dir =
+        flag "compiler-int-dir" (optional string)
+          ~doc:"DIR the compiler rewrites in integer arithmetic (where supported)"
       in
       fun () ->
         main ~smt_out ~ml_out ~compiler_smt ~compiler_smt_dir ~instances_dir ~divisors
-          ~magic_dir
+          ~magic_dir ~int_dir
     ]
 
 let () = Command_unix.run command

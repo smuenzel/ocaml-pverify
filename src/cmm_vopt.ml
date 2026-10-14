@@ -8,3 +8,4 @@ module Smt_preamble = Smt_preamble
 module Spec = Spec
 module Spec_to_cmm = Spec_to_cmm
 module Spec_to_smt = Spec_to_smt
+module Spec_to_int = Spec_to_int

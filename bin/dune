@@ -1,5 +1,5 @@
 (executable
   (name gen_vopt)
-  (libraries cmm_vopt core_unix.command_unix)
+  (libraries cmm_vopt core_unix core_unix.command_unix)
   (preprocess (pps ppx_jane))
 )

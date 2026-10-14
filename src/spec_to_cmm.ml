@@ -6,6 +6,7 @@ module Cmm = struct
     | Cop of operation * expression list * debuginfo
     | Cconst_int of int * debuginfo
     | Xexp_var of string
+    | Xconst_var of string * int * debuginfo (* Cconst_int (var + offset, dbg) *)
   and operation =
     | Caddi
     | Cand
@@ -34,6 +35,8 @@ module Cmm = struct
       0
     | Xexp_var _ ->
       0
+    | Xconst_var _ ->
+      0
 
   let rec count_heads = function
     | Cop (_, elist, _) ->
@@ -41,6 +44,8 @@ module Cmm = struct
     | Cconst_int _ ->
       1
     | Xexp_var _ ->
+      1
+    | Xconst_var _ ->
       1
 
   module Print = struct
@@ -59,6 +64,14 @@ module Cmm = struct
         let dbg = print_debuginfo debuginfo in
         sprintf "Cconst_int (%i,%s)" i dbg
       | Xexp_var s -> s
+      | Xconst_var (s, offset, debuginfo) ->
+        let dbg = print_debuginfo debuginfo in
+        let value =
+          if offset = 0 then s
+          else if offset > 0 then sprintf "%s + %i" s offset
+          else sprintf "%s - %i" s (-offset)
+        in
+        sprintf "Cconst_int (%s,%s)" value dbg
     and print_operation = function
       | Caddi
       | Cand
@@ -115,6 +128,8 @@ let rec cmm_of_phrase ~combine_debug ~dbg (phrase : _ Spec.Phrase.t) =
   match kind with
   | Var v -> expr_of_var v
   | Const c -> expr_of_const ~dbg c
+  | Const_var { var; offset } ->
+    Xconst_var (Spec.Var.Name.to_string var.name, offset, expand_debug dbg)
   | Op1 op1 -> expr_of_op1 ~combine_debug ~dbg op1
   | Op2 op2 -> expr_of_op2 ~combine_debug ~dbg op2
 
@@ -146,15 +161,22 @@ and expr_of_op1 ~combine_debug ~dbg op1 =
       ; p1
       } = op1
   in
-  let Tagi = kind in
   let p1 = cmm_of_phrase ~combine_debug ~dbg p1 in
-  Cmm.Cop 
-    (Caddi
-    , [ Cop (Clsl, [p1; Cconst_int (1,expand_debug dbg)], expand_debug dbg)
-      ; Cconst_int (1, expand_debug dbg)
-      ]
-    , expand_debug dbg
-    )
+  match kind with
+  | Tagi ->
+    Cmm.Cop 
+      (Caddi
+      , [ Cop (Clsl, [p1; Cconst_int (1,expand_debug dbg)], expand_debug dbg)
+        ; Cconst_int (1, expand_debug dbg)
+        ]
+      , expand_debug dbg
+      )
+  | Untagi ->
+    Cmm.Cop
+      (Casr
+      , [ p1; Cconst_int (1, expand_debug dbg) ]
+      , expand_debug dbg
+      )
 
 
 let combine_debug_source ~inherited:_ ~current =
@@ -173,8 +195,31 @@ let pattern_cmm_of_spec spec : Cmm.expression =
 let expression_cmm_of_spec spec : Cmm.expression =
   cmm_of_phrase ~combine_debug:combine_debug_destination ~dbg:None spec
 
+let print_guard_operand : Spec.Guard.Operand.t -> string = function
+  | Const_var (var, offset) ->
+    let name = Spec.Var.Name.to_string var.name in
+    if offset = 0 then name
+    else if offset > 0 then sprintf "%s + %i" name offset
+    else sprintf "%s - %i" name (-offset)
+  | Word_bits 0 -> "size_int * 8"
+  | Word_bits offset when offset > 0 -> sprintf "size_int * 8 + %i" offset
+  | Word_bits offset -> sprintf "size_int * 8 - %i" (-offset)
+  | Literal i -> Int.to_string i
+
+let print_guard { Spec.Guard. cmp; lhs; rhs } =
+  let op =
+    match cmp with
+    | EQ -> "="
+    | NE -> "<>"
+    | LT -> "<"
+    | GT -> ">"
+    | LE -> "<="
+    | GE -> ">="
+  in
+  sprintf "%s %s %s" (print_guard_operand lhs) op (print_guard_operand rhs)
+
 let to_match_case ?name rule =
-  let { Spec.Rule. input; output } = rule in
+  let { Spec.Rule. input; output; guard } = rule in
   let input_cmm = pattern_cmm_of_spec input in
   let input = Cmm.Print.print_expression input_cmm in
   let output_cmm = expression_cmm_of_spec output in
@@ -188,8 +233,15 @@ let to_match_case ?name rule =
     | None ->      "  (* "
     | Some name -> "  (* " ^ name ^ "\n     "
   in
+  let when_ =
+    match guard with
+    | [] -> ""
+    | guard ->
+      sprintf "\n    when %s"
+        (List.map guard ~f:print_guard |> String.concat ~sep:" && ")
+  in
   String.concat ~sep:"\n"
-    [ sprintf "| %s ->" input
+    [ sprintf "| %s%s ->" input when_
     ; sprintf "%s Size: (%i ops, %i heads) in -> (%i ops, %i heads) out *)"
         maybe_name size_input heads_input size_output heads_output
     ; sprintf "  %s" output

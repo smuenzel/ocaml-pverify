@@ -12,6 +12,7 @@ module Var = struct
   type _ kind =
     | Int : [`Int] kind
     | Cmp : [`Cmp] kind
+    | Const : [`Const] kind
   [@@deriving sexp_of]
 
   type 'kind t =
@@ -58,6 +59,7 @@ module Unary_op = struct
   module Kind = struct
     type t =
       | Tagi
+      | Untagi
     [@@deriving sexp]
   end
 
@@ -145,6 +147,9 @@ module Phrase = struct
   type 'debug kind =
     | Var of [`Int] Var.t
     | Const of Const.t
+    (* A symbolic constant: [Cconst_int (var + offset, _)]. In patterns the
+       offset must be zero. *)
+    | Const_var of { var : [`Const] Var.t; offset : int }
     | Op1 of 'debug t Unary_op.t
     | Op2 of 'debug t Binary_op.t
   and 'debug t =
@@ -159,6 +164,8 @@ module Phrase = struct
       Var.Name.Map.singleton var.name (Var.T var)
     | Const _ -> 
       Var.Name.Map.empty
+    | Const_var { var; offset = _ } ->
+      Var.Name.Map.singleton var.name (Var.T var)
     | Op1 { p1; _ } -> all_vars p1  
     | Op2 { p1; p2; kind } ->
       Var.merge (all_vars p1) (all_vars p2)
@@ -166,14 +173,42 @@ module Phrase = struct
 
 end
 
+(* Side conditions on symbolic constants, emitted as a [when] clause. *)
+module Guard = struct
+  module Operand = struct
+    type t =
+      | Const_var of [`Const] Var.t * int (* var + offset *)
+      | Word_bits of int (* size_int * 8 + offset *)
+      | Literal of int
+    [@@deriving sexp_of]
+
+    let all_vars = function
+      | Const_var (var, _) -> Var.Name.Map.singleton var.name (Var.T var)
+      | Word_bits _
+      | Literal _ -> Var.Name.Map.empty
+  end
+
+  type t =
+    { cmp : Binary_op.Kind.Compare.t
+    ; lhs : Operand.t
+    ; rhs : Operand.t
+    } [@@deriving sexp_of]
+
+  let all_vars { cmp = _; lhs; rhs } =
+    Var.merge (Operand.all_vars lhs) (Operand.all_vars rhs)
+end
+
 module Rule = struct
   type t =
     { input : Debug.Source.t Phrase.t
     ; output : Debug.Destination.t Phrase.t
+    ; guard : Guard.t list
     } [@@deriving sexp_of]
 
-  let all_vars { input; output } =
-    Var.merge (Phrase.all_vars input) (Phrase.all_vars output)
+  let all_vars { input; output; guard } =
+    List.fold guard
+      ~init:(Var.merge (Phrase.all_vars input) (Phrase.all_vars output))
+      ~f:(fun acc g -> Var.merge acc (Guard.all_vars g))
 end
 
 module Make = struct
@@ -188,6 +223,21 @@ module Make = struct
       name = Var.Name.of_string name
     ; kind = Cmp
     }
+
+  let var_const name =
+    { Var.
+      name = Var.Name.of_string name
+    ; kind = Const
+    }
+
+  let const_var ?(offset = 0) var debug =
+    { Phrase.
+      kind = Phrase.Const_var { var; offset }
+    ; debug
+    }
+
+  let guard cmp lhs rhs =
+    { Guard. cmp; lhs; rhs }
 
   let var name =
     { Phrase.

@@ -4,7 +4,7 @@ open Cmm_vopt
 let _main () =
   let open Cmm_vopt in
   let module Cmm = Spec_to_cmm.Cmm in
-  let { Spec.Rule. input; output } = Schemes.example_spec in
+  let { Spec.Rule. input; output; guard = _ } = Schemes.example_spec in
   let input_cmm =
     Spec_to_cmm.pattern_cmm_of_spec input
   in

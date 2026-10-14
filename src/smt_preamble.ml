@@ -35,10 +35,10 @@ let preamble = {|
 (define-fun ocaml-asr ((x ocaml-int) (y ocaml-int)) ocaml-int
   (bvashr x y))
 
-(define-fun ocaml-has-tag ((x ocaml-int)) bool
+(define-fun ocaml-has-tag ((x ocaml-int)) Bool
   (= (ocaml-and x ONE) ONE))
 
-(define-fun ocaml-highest-bits-same ((x ocaml-int)) bool
+(define-fun ocaml-highest-bits-same ((x ocaml-int)) Bool
   (= ((_ extract HIGHBIT HIGHBIT) x) ((_ extract HIGHBIT2 HIGHBIT2) x)))
 
 (define-fun ocaml-lsr-1 ((x ocaml-int)) ocaml-int

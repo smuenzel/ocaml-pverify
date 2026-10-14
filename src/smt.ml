@@ -105,12 +105,14 @@ module Const = struct
     | One
     | Three
     | Neg_one
+    | Int of int
 
   let smt_of_t : t -> Sexp.t = function
     | Zero -> Atom (Smt_int.of_int 0)
     | One -> Atom (Smt_int.of_int 1)
     | Three -> Atom (Smt_int.of_int 3)
     | Neg_one -> Atom (Smt_int.of_int (-1))
+    | Int i -> Atom (Smt_int.of_int i)
 end
 
 module Expression = struct
@@ -138,25 +140,50 @@ type phrase =
   | Pop of int
   | Check_sat
   | Get_model
+  | Assert of assertion
   | Assert_not of assertion
   | Echo of string
   | Declare_const of { name : string; typ : string }
 and assertion =
   | Equal of Expression.t * Expression.t
+  | Signed_cmp of Compare.t * Expression.t * Expression.t
+  | Unsigned_lt of Expression.t * Expression.t
+  (* Value fits in a (63-bit) OCaml int, i.e. is representable in Cconst_int *)
+  | Fits_ocaml_int of Expression.t
+  | And of assertion list
 
-let smt_of_assertion : _ -> Sexp.t = function
+let rec smt_of_assertion : _ -> Sexp.t = function
   | Equal (a,b) ->
     List
       [ Atom "="
       ; Expression.smt_of_t a
       ; Expression.smt_of_t b
       ]
+  | Signed_cmp (cmp, a, b) ->
+    let a = Expression.smt_of_t a in
+    let b = Expression.smt_of_t b in
+    (match cmp with
+     | EQ -> List [ Atom "="; a; b ]
+     | NE -> List [ Atom "not"; List [ Atom "="; a; b ] ]
+     | LT -> List [ Atom "bvslt"; a; b ]
+     | GT -> List [ Atom "bvsgt"; a; b ]
+     | LE -> List [ Atom "bvsle"; a; b ]
+     | GE -> List [ Atom "bvsge"; a; b ])
+  | Unsigned_lt (a, b) ->
+    List [ Atom "bvult"; Expression.smt_of_t a; Expression.smt_of_t b ]
+  | Fits_ocaml_int a ->
+    List [ Atom "ocaml-highest-bits-same"; Expression.smt_of_t a ]
+  | And [] -> Atom "true"
+  | And [ a ] -> smt_of_assertion a
+  | And l -> List (Atom "and" :: List.map l ~f:smt_of_assertion)
 
 let smt_of_phrase : _ -> Sexp.t = function
   | Push i -> List [ Atom "push"; [%sexp_of:int] i ]
   | Pop i -> List [ Atom "pop"; [%sexp_of:int] i ]
   | Check_sat -> List [ Atom "check-sat" ]
   | Get_model -> List [ Atom "get-model" ]
+  | Assert assertion ->
+    List [ Atom "assert"; smt_of_assertion assertion ]
   | Assert_not assertion ->
     List [ Atom "assert-not"; smt_of_assertion assertion ]
   | Echo string ->

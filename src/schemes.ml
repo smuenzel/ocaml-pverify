@@ -3,6 +3,7 @@ open! Core
 class rule_helper = object (self)
   val vars = String.Table.create ()
   val vars_cmp = String.Table.create ()
+  val vars_const = String.Table.create ()
   val debugs = String.Table.create ()
 
   method var_cmp name =
@@ -39,10 +40,19 @@ class rule_helper = object (self)
   method dbg_s name = fst (self#debug name)
   method dbg_d name = snd (self#debug name)
 
-  method make input output =
+  method var_const name =
+    match Hashtbl.find vars_const name with
+    | Some var -> var
+    | None ->
+      let var = Spec.Make.var_const name in
+      Hashtbl.add_exn vars_const ~key:name ~data:var;
+      var
+
+  method make ?(guard = []) input output =
     { Spec.Rule.
       input
     ; output
+    ; guard
     }
 end
 
@@ -216,6 +226,42 @@ let nested_equal_three_tagged =
       )
     end
 
+(* From [Cmm_helpers.untag_int]:
+   {[
+     | Cop(Cor, [Cop(Casr, [c; Cconst_int (n, _)], _); Cconst_int (1, _)], _)
+       when n > 0 && n < size_int * 8 ->
+         Cop(Casr, [c; Cconst_int (n+1, dbg)], dbg)
+   ]}
+   The result of the [Cor] is untagged, i.e. shifted right by one. *)
+let untag_or_shift shift =
+  let r = new rule_helper in
+  let n = r#var_const "n" in
+  r#make
+    ~guard:
+      [ guard GT (Const_var (n, 0)) (Literal 0)
+      ; guard LT (Const_var (n, 0)) (Word_bits 0)
+      ]
+    begin
+      op1 Untagi
+        (op2 (Logical Or)
+           (op2 (Shift shift)
+              (r#var_s "c")
+              (const_var n Spec.Debug.Source.Anon)
+              Anon
+           )
+           (const One Spec.Debug.Source.Anon)
+           Anon
+        )
+        (r#dbg_s "dbg")
+    end
+    begin
+      let dbg = r#dbg_d "dbg" in
+      op2 (Shift shift) (r#var_d "c") (const_var ~offset:1 n dbg) dbg
+    end
+
+let untag_or_asr = untag_or_shift Asr
+let untag_or_lsr = untag_or_shift Lsr
+
 let example_spec = tag_xor
 
 let all =
@@ -227,6 +273,8 @@ let all =
   ; "nested-nequal-one-tagged", nested_nequal_one_tagged
   ; "nested-equal-one", nested_equal_one
   ; "nested-equal-three-tagged", nested_equal_three_tagged
+  ; "untag-or-asr", untag_or_asr
+  ; "untag-or-lsr", untag_or_lsr
   ]
   |> String.Map.of_alist_exn
 
